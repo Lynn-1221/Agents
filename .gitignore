@@ -1,5 +1,7 @@
 api-key.py
 .env
+.cache/
+.venv/
 *.mp4
 *.srt
 __pycache__/
