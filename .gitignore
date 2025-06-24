@@ -1,0 +1,5 @@
+api-key.py
+.env
+*.mp4
+*.srt
+__pycache__/
