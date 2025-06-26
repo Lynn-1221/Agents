@@ -5,3 +5,5 @@ api-key.py
 *.mp4
 *.srt
 __pycache__/
+outputs/
+*.csv
