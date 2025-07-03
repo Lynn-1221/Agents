@@ -9,3 +9,8 @@ outputs/
 *.csv
 ~/llm_env/
 coding/
+mp_index_doc/
+mp_index_param/
+mp_index_return/
+mp_docstore/
+mp_index/

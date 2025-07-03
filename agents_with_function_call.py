@@ -119,7 +119,7 @@ from autogen.coding import CodeBlock, LocalCommandLineCodeExecutor
 venv_dir = "~/llm_env"
 venv_context = create_virtual_env(venv_dir)
 
-# 关键代码：创建一个代码执行器，并指定可调用的函数
+### 1. 自定义函数的注册与智能体调用 ###
 executor = LocalCommandLineCodeExecutor(
     virtual_env_context=venv_context,
     timeout=200,
@@ -127,22 +127,32 @@ executor = LocalCommandLineCodeExecutor(
     functions=[generate_virtual_data, normalize_data, moving_average, plot_lines_with_ma, install_package],
 )
 print(executor.execute_code_blocks(code_blocks=[CodeBlock(language="python", code="import sys; print(sys.executable)")]))
+### 1. 自定义函数的注册与智能体调用 ###
 
 code_writer_agent_system_message = """
-你是一位专业的Python数据分析师。
-请严格按照用户需求生成高质量、可运行的Python代码，
-并确保代码有详细注释。
-1. 当你需要收集信息时，使用代码输出你需要的信息，例如：浏览或搜索网页、下载/读取文件、获取API数据等。
-在输出足够的信息，并且任务已经准备好好，你就可以自己解决该任务了。
-2. 当你需要用代码执行某些任务时，使用代码执行任务并输出结果。
-如果需求，请逐步完成任务，如果没有提供计划，请先解释你的计划，明确哪些步骤使用代码，哪些步骤使用语言技能。
-使用代码时，必须在代码快中注明脚本类型。
-请勿在一个响应中包含多个代码快。
-如果结果表明存在错误，请修复错误并重新输出代码。如果无法修复，请分析问题，并重新审视你的假设，收集所需信息，并尝试其他方法。
-当所有任务完成后，请在消息结尾回复"终止"。
+你是一位专业的 Python 数据分析师，负责根据用户需求编写高质量、可运行的 Python 代码。请严格按照以下要求执行任务，并确保代码详细注释。
+1. **信息收集阶段：**
+   * 当你需要收集任务相关的信息时，请通过以下方式之一获取所需数据：
+     * 浏览或搜索网页
+     * 下载/读取文件
+     * 获取 API 数据
+   * 在收集足够信息后，确保你已经准备好解决任务。此时，可以进行后续任务执行。
+2. **任务执行阶段：**
+   * 执行任务时，请使用 Python 代码并输出结果。
+   * 如果任务可以分步完成，请逐步执行，清晰描述每个步骤。若没有明确的执行步骤，请先解释你的解决计划，明确哪些步骤会用代码完成，哪些步骤依赖语言能力。
+   * 每段代码块都需要有明确注释，且必须在代码块中注明脚本类型（例如数据处理、API 调用、文件操作等）。
+   * 请勿在一个响应中包含多个代码块，保持每个代码块的独立性，确保逻辑清晰。
+3. **错误处理：**
+   * 如果在执行代码时遇到错误，请修复错误并重新输出修正后的代码。如果问题无法修复，请：
+     * 分析错误原因，并重新审视之前的假设。
+     * 收集所需的信息，并尝试其他方法来解决问题
+4. **任务完成：*
+   * 当所有任务完成后，请在消息结尾回复“终止”。
 """
 
+### 2. 将函数签名自动注入到 LLM 的系统提示词中 ###
 code_writer_agent_system_message += executor.format_functions_for_prompt()
+### 2. 将函数签名自动注入到 LLM 的系统提示词中 ###
 
 print(code_writer_agent_system_message)
 

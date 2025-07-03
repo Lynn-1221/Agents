@@ -91,7 +91,7 @@ user_proxy = UserProxyAgent(
 # 群聊配置与 Manager
 agent_list = [user_proxy, framework_architect, materials_expert, scoring_specialist, data_curator, facilitator_agent]
 
-groupchat = GroupChat(agents=agent_list, messages=[], max_round=15)
+groupchat = GroupChat(agents=agent_list, messages=[], max_round=50)
 
 manager = GroupChatManager(
     groupchat=groupchat,

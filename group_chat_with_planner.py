@@ -74,37 +74,7 @@ classification_path_ontology = """
 }
 """
 
-from typing import List, Dict
-import re
-
-def extract_contexts(text: str, entities: List[str], window: int = 50) -> Dict[str, List[str]]:
-    """
-    在给定文本中为每个实体提取其上下文窗口。
-
-    参数:
-        text: 原始摘要文本
-        entities: 实体列表
-        window: 上下文窗口大小（前后字符数）
-
-    返回:
-        dict: {实体1: [context1, context2, ...], 实体2: [...], ...}
-    """
-    try:
-        results = {}
-        for entity in entities:
-            pattern = re.compile(re.escape(entity))
-            matches = list(pattern.finditer(text))
-            contexts = set()
-            for m in matches:
-                start = max(0, m.start() - window)
-                end = min(len(text), m.end() + window)
-                contexts.add(text[start:end].strip())
-            results[entity] = list(contexts)
-        return json.dumps(results, ensure_ascii=False)
-    except Exception:
-        # 发生任何错误，直接返回空字典
-        return "{}"
-
+### 1. 多智能体角色的定义与分工 ###
 user_proxy = UserProxyAgent(
     name="Admin",
     system_message="你是用户代理，负责发起任务并审阅最终报告。你可以向 Writer 提出修改建议。",
@@ -304,13 +274,16 @@ writer = ConversableAgent(
     """,
     description="Markdown 报告专家，撰写并多轮优化实体处理流程评估报告，强调结构清晰、逻辑严谨、可读性强"
 )
+### 1. 多智能体角色的定义与分工 ###
 
+### 2. GroupChat 与 GroupChatManager 的组装与调度 ###
+# GroupChat 负责定义所有参与的 Agent 以及他们之间的对话规则（谁可以和谁说话）
 group_chat = GroupChat(
     agents=[
         user_proxy, planner, extractor, context_extractor, generalizer, 
         classifier, evaluator, writer],
     messages=[],
-    max_round=50,
+    max_round=50, # 每个 agent 说话，并得到下一个 agent 回复，算一轮
     allowed_or_disallowed_speaker_transitions={
         user_proxy: [planner, writer],
         planner: [extractor, context_extractor, generalizer, classifier, evaluator, writer],
@@ -323,11 +296,12 @@ group_chat = GroupChat(
     },
     speaker_transitions_type="allowed",
 )
-
+# GroupChatManager 负责驱动整个多智能体流程，确保任务按照预定流程推进：
 manager = GroupChatManager(
     groupchat=group_chat,
     llm_config=llm_config,
 )
+### 2. GroupChat 与 GroupChatManager 的组装与调度 ###
 
 import pandas as pd
 df = pd.read_csv("samples.csv")
