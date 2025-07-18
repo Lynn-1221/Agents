@@ -58,29 +58,52 @@ def retrieve_snippets(intent: dict) -> list:
     """
     根据结构化意图，从本地 MP 知识库检索相关示例代码。
     intent: dict, 包含字段如 'target', 'filters', 'fields' 等。
-    分字段分别检索 docstring、params、returns，合并去重。
-    返回最相关的若干代码片段列表。
+    分字段分别检索 docstring、params、returns，统计每个 id 命中次数，返回命中次数最多的完整函数文档。
     """
-    # 1. 语义检索 docstring
+    import os
+    id_counter = {}
     query = intent.get("query", "")
-    doc_results = []
-    if query:
-        doc_results = doc_store.similarity_search(query, k=3)
-    # 2. 参数检索
     params = intent.get("filters", {}).keys()
-    param_results = []
+    fields = intent.get("fields", [])
+
+    # 1. docstring 检索
+    doc_results = doc_store.similarity_search_with_score(query, k=3) if query else []
+    for d, _ in doc_results:
+        idx = d.metadata.get("id")
+        if idx is not None:
+            id_counter[idx] = id_counter.get(idx, 0) + 1
+
+    # 2. params 检索
     for p in params:
         if p:
-            param_results.extend(param_store.similarity_search(p, k=2))
-    # 3. 返回字段检索
-    fields = intent.get("fields", [])
-    return_results = []
+            param_results = param_store.similarity_search_with_score(p, k=2)
+            for d, _ in param_results:
+                idx = d.metadata.get("id")
+                if idx is not None:
+                    id_counter[idx] = id_counter.get(idx, 0) + 1
+
+    # 3. returns 检索
     for f in fields:
         if f:
-            return_results.extend(return_store.similarity_search(f, k=2))
-    # 4. 合并去重
-    all_results = {d.page_content for d in doc_results + param_results + return_results}
-    return list(all_results)
+            return_results = return_store.similarity_search_with_score(f, k=2)
+            for d, _ in return_results:
+                idx = d.metadata.get("id")
+                if idx is not None:
+                    id_counter[idx] = id_counter.get(idx, 0) + 1
+
+    # 4. 选出命中次数最多的函数
+    if not id_counter:
+        return []
+    max_count = max(id_counter.values())
+    best_ids = [idx for idx, cnt in id_counter.items() if cnt == max_count]
+
+    # 5. 加载完整函数文档
+    results = []
+    for idx in best_ids:
+        json_path = os.path.join("./mp_docstore", f"fn_{idx}.json")
+        with open(json_path, "r", encoding="utf8") as f:
+            results.append(json.load(f))
+    return results
 
 retriever_tool = FunctionTool(
     func=retrieve_snippets,

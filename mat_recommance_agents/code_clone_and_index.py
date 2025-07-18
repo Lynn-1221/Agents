@@ -59,22 +59,24 @@ print(f"共解析 {len(records)} 个函数")
 for r in records[:3]:
     print(r["func"], "| params:", r["params"], "returns:", r["returns"], "example:", bool(r["example"]))
 
-# 4. 写为 JSON 文件，供后续检索
+# 4. 写为 JSON 文件，供后续检索，并分配唯一 id
 json_docs_dir = "./mp_docstore"
 os.makedirs(json_docs_dir, exist_ok=True)
 for idx, r in enumerate(records):
+    r["id"] = idx
     with open(os.path.join(json_docs_dir, f"fn_{idx}.json"), "w", encoding="utf8") as f:
         json.dump(r, f, ensure_ascii=False, indent=2)
 
-# 5. 分字段构建向量索引
+# 5. 分字段构建向量索引，metadata 加 id
 doc_texts = [r["doc"] for r in records]
 param_texts = [", ".join(r["params"]) for r in records]
 return_texts = [r["returns"] for r in records]
+ids = [r["id"] for r in records]
 
 embedding = OpenAIEmbeddings(api_key=os.getenv("API_KEY"), base_url=os.getenv("BASE_URL"), model="text-embedding-3-small")
 
-doc_store = Chroma.from_texts(doc_texts, embedding, persist_directory="./mp_index_doc")
-param_store = Chroma.from_texts(param_texts, embedding, persist_directory="./mp_index_param")
-return_store = Chroma.from_texts(return_texts, embedding, persist_directory="./mp_index_return")
+doc_store = Chroma.from_texts(doc_texts, embedding, metadatas=[{"id": i} for i in ids], persist_directory="./mp_index_doc")
+param_store = Chroma.from_texts(param_texts, embedding, metadatas=[{"id": i} for i in ids], persist_directory="./mp_index_param")
+return_store = Chroma.from_texts(return_texts, embedding, metadatas=[{"id": i} for i in ids], persist_directory="./mp_index_return")
 
 print("分字段索引构建完成，可以用 doc_store/param_store/return_store 检索。")
